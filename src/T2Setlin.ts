@@ -71,66 +71,56 @@ class TSetlin{
 
   getConditionMask(){
     let literalBits = new Uint8Array(Math.ceil(this.numberOfPositiveLiterals*2/8)); 
-    for(let l=0; l != this.numberOfPositiveLiterals;l++){
+    this.iterateOverLiterals((cByte:number,mask:number,nomask:number,l:number,cBit :number)=>{
       const literal = this.getLiteralMemoryValue(l);
-      const cByte = Math.floor(l/4);
-      const cBit  = l%4;
       if (literal){
         literalBits[cByte] |= ((literal[0] >= 6 ? 1:0) << cBit*2) | ((literal[1] >=6 ? 1:0) << (cBit*2+1)); 
       }
-    }
+      return true;
+    });
     return literalBits;
   }
 
   typeIFeedback(observation : Uint8Array){
+
     const conditionMask = this.getConditionMask();
     let   forgetMask    =   new Uint8Array( 
             [...new Array(conditionMask.length)].map(()=>0xFF)
     );
 
     if (this.evaluateCondition(observation,conditionMask)){
-      for(let l=0; l != this.numberOfPositiveLiterals;l++){
-        const cByte = Math.floor(l/4);
-        const cBit  = l%4;
-        let mask = 1 << cBit*2;
+      this.iterateOverLiterals((cByte:number,mask:number,nomask:number,l:number)=>{
         if ((observation[cByte] & mask)  == mask){
           this.memorize(l,false);
           forgetMask[cByte] ^=mask;
         }else {
           this.memorize(l,true);
-          mask = 1 << (cBit*2 +1)
-          forgetMask[cByte] ^=mask;
+          forgetMask[cByte] ^=nomask;
         }
-      }
+        return true;
+      });
     }
-    //this loop is repetitive could be converted into a function 
-    for(let l=0; l != this.numberOfPositiveLiterals;l++){
-      const cByte = Math.floor(l/4);
-      const cBit  = l%4;
-      let mask = 1 << cBit*2;
+    this.iterateOverLiterals((cByte:number,mask:number,nomask:number,l:number)=>{
       if ((forgetMask[cByte] & mask)  == mask){
         this.forget(l,false);
       }
-      mask = 1 << (cBit*2+1);
-      if ((forgetMask[cByte] & mask)  == mask){
+      if ((forgetMask[cByte] & nomask)  == nomask){
         this.forget(l,true);
       }
-    }
+      return true;
+    });
   }
   
   typeIIFeedback(observation:Uint8Array){
     const conditionMask = this.getConditionMask();
     if (!this.evaluateCondition(observation,conditionMask)) return;
-    for(let l=0; l != this.numberOfPositiveLiterals;l++){
-      const cByte = Math.floor(l/4);
-      const cBit  = l%4;
-      let mask = 1 << cBit*2;
+    this.iterateOverLiterals((cByte:number,mask:number,nomask:number,l:number)=>{
       if ((observation[cByte] & mask) !=mask){
         this.increase(l,false); //memorize_always equivalent
       }else{
         this.increase(l,true);
       }
-    }
+    });
   }
   /*
    * The callback function should return false if want to break the iteration
@@ -141,7 +131,7 @@ class TSetlin{
       const cBit    = l%4;
       const mask    = 1 << (cBit*2);
       const notmask = 1 << (cBit*2+1);
-      if (!callback(cByte,mask,notmask))
+      if (!callback(cByte,mask,notmask,l,cBit))
         return false;
     }
     return true;
@@ -152,6 +142,7 @@ class TSetlin{
         return false;
       if ((conditionOrRule[cByte] & notmask) == notmask && (observation[cByte] & mask)  == mask)
         return false;
+      return true;
     })
     return ret;
   }
