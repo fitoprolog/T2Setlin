@@ -132,21 +132,28 @@ class TSetlin{
       }
     }
   }
-
-  evaluateCondition(observation : Uint8Array , conditionOrRule : Uint8Array){
+  /*
+   * The callback function should return false if want to break the iteration
+   */
+  iterateOverLiterals(callback:Function){
     for(let l=0; l != this.numberOfPositiveLiterals;l++){
-      const cByte = Math.floor(l/4);
-      const cBit  = l%4;
-      let mask = 1 << (cBit*2);
-      if ((conditionOrRule[cByte] & mask) == mask && (observation[cByte] & mask)  != mask){
+      const cByte   = Math.floor(l/4);
+      const cBit    = l%4;
+      const mask    = 1 << (cBit*2);
+      const notmask = 1 << (cBit*2+1);
+      if (!callback(cByte,mask,notmask))
         return false;
-      }
-      let notmask = 1 << (cBit*2+1)
-      if ((conditionOrRule[cByte] & notmask) == notmask && (observation[cByte] & mask)  == mask){
-        return false;
-      }
     }
     return true;
+  }
+  evaluateCondition(observation : Uint8Array , conditionOrRule : Uint8Array){
+    const ret=this.iterateOverLiterals((cByte:number,mask:number,notmask:number)=>{
+      if ((conditionOrRule[cByte] & mask) == mask && (observation[cByte] & mask)  != mask)
+        return false;
+      if ((conditionOrRule[cByte] & notmask) == notmask && (observation[cByte] & mask)  == mask)
+        return false;
+    })
+    return ret;
   }
 
   choose(options:number){

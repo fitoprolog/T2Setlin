@@ -17,9 +17,7 @@ const planes=[
   new Uint8Array([TransportsPeople|Wings ,1])
 ]
 
-
 const TAM = new TSetlin(0.9,0.1,5);
-
 
 TAM.train(cars,[planes],100);
 const finalRules = TAM.getConditionMask();
