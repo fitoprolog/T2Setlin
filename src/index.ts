@@ -20,12 +20,8 @@ const planes=[
 
 const TAM = new TSetlin(0.9,0.1,5);
 
-TAM.typeIFeedback(cars[0]);
-/*TAM.increase(0,false);
-TAM.increase(1,false);
-TAM.increase(2,true);*/
 
-TAM.train(cars,[planes],1000);
+TAM.train(cars,[planes],100);
 const finalRules = TAM.getConditionMask();
 cars.forEach((e)=>{
   console.log("IsACar",TAM.evaluateCondition(e,finalRules));

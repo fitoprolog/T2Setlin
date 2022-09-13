@@ -9,7 +9,7 @@ class TSetlin{
   private forgetTh  : number;
   private memorizeTh: number; 
   private numberOfPositiveLiterals:number;
-
+  
   constructor(forgetTh : number , memorizeTh : number , numberOfPositiveLiterals:number){
     this.memory = new Uint8Array( 
             [...new Array(numberOfPositiveLiterals)].map(()=>INITIAL_MEMORY_STATE)
@@ -94,11 +94,9 @@ class TSetlin{
         const cBit  = l%4;
         let mask = 1 << cBit*2;
         if ((observation[cByte] & mask)  == mask){
-          console.log("memorizing", l ,"positive");
           this.memorize(l,false);
           forgetMask[cByte] ^=mask;
         }else {
-          console.log("memorizing", l ,"negative");
           this.memorize(l,true);
           mask = 1 << (cBit*2 +1)
           forgetMask[cByte] ^=mask;
@@ -112,12 +110,10 @@ class TSetlin{
       let mask = 1 << cBit*2;
       if ((forgetMask[cByte] & mask)  == mask){
         this.forget(l,false);
-        console.log("forgetting", l ,"positive");
       }
       mask = 1 << (cBit*2+1);
       if ((forgetMask[cByte] & mask)  == mask){
         this.forget(l,true);
-        console.log("forgetting", l ,"negative");
       }
     }
   }
@@ -159,7 +155,13 @@ class TSetlin{
 
   train(targetClass : Uint8Array[] ,otherClasses: any,epochs : number ){
     for (let e=0; e !=epochs; e++){
-      this.typeIFeedback(targetClass[this.choose(targetClass.length)]);
+      if (Math.random()>=0.5){
+        this.typeIFeedback(targetClass[this.choose(targetClass.length)]);
+      }else{
+        const other = otherClasses[this.choose(otherClasses.length)];
+        this.typeIIFeedback(other[this.choose(other.length)])
+      }
+      console.log("Epoch ",e);
     }
   }
 
