@@ -57,12 +57,12 @@ class TSetlin{
   }
 
   memorize(literal : number, negative: boolean){
-    if (Math.random() > this.memorizeTh) return false;
+    if (Math.random() <= this.memorizeTh) return false;
     return this.increase(literal,negative);
   }
 
   forget(literal: number , negative : boolean){
-    if (Math.random() > this.forgetTh) return false;
+    if (Math.random() <= this.forgetTh) return false;
     return this.decrease(literal,negative);
   }
 
@@ -71,8 +71,8 @@ class TSetlin{
     let literalBits = new Uint8Array(Math.ceil(this.numberOfPositiveLiterals*2/8)); 
     for(let l=0; l != this.numberOfPositiveLiterals;l++){
       const literal = this.getLiteralMemoryValue(l);
-      const cByte = Math.floor(l/8);
-      const cBit  = l%8;
+      const cByte = Math.floor(l/4);
+      const cBit  = l%4;
       if (literal){
         literalBits[cByte] |= ((literal[0] >= 6 ? 1:0) << cBit*2) | ((literal[1] >=6 ? 1:0) << (cBit*2+1)); 
       }
@@ -88,8 +88,8 @@ class TSetlin{
 
     if (this.evaluateCondition(observation,conditionMask)){
       for(let l=0; l != this.numberOfPositiveLiterals;l++){
-        const cByte = Math.floor(l/8);
-        const cBit  = l%8;
+        const cByte = Math.floor(l/4);
+        const cBit  = l%4;
         let mask = 1 << cBit*2;
         if ((observation[cByte] & mask)  == mask){
           this.memorize(l,false);
@@ -103,8 +103,8 @@ class TSetlin{
     }
     //this loop is repetitive could be converted into a function 
     for(let l=0; l != this.numberOfPositiveLiterals;l++){
-      const cByte = Math.floor(l/8);
-      const cBit  = l%8;
+      const cByte = Math.floor(l/4);
+      const cBit  = l%4;
       let mask = 1 << cBit*2;
       if ((forgetMask[cByte] & mask)  == mask){
         this.forget(l,false);
@@ -115,24 +115,51 @@ class TSetlin{
       }
     }
   }
+  
+  typeIIFeedback(observation:Uint8Array){
+    const conditionMask = this.getConditionMask();
+    if (!this.evaluateCondition(observation,conditionMask)) return;
+    for(let l=0; l != this.numberOfPositiveLiterals;l++){
+      const cByte = Math.floor(l/4);
+      const cBit  = l%4;
+      let mask = 1 << cBit*2;
+      if ((observation[cByte] & mask) !=mask){
+        this.increase(l,false); //memorize_always equivalent
+      }else{
+        this.increase(l,true);
+      }
+    }
+  }
 
   evaluateCondition(observation : Uint8Array , conditionOrRule : Uint8Array){
-    let ret=true;
     for(let l=0; l != this.numberOfPositiveLiterals;l++){
-      const cByte = Math.floor(l/8);
-      const cBit  = l%8;
-      let mask = 1 << cBit*2;
+      const cByte = Math.floor(l/4);
+      const cBit  = l%4;
+      let mask = 1 << (cBit*2);
       if ((conditionOrRule[cByte] & mask) == mask && (observation[cByte] & mask)  != mask){
         return false;
       }
-      mask = 1 << (cBit*2+1)
-      if ((conditionOrRule[cByte] & mask) == mask && (observation[cByte] & mask)  == mask){
+      let notmask = 1 << (cBit*2+1)
+      if ((conditionOrRule[cByte] & notmask) == notmask && (observation[cByte] & mask)  == mask){
         return false;
       }
     }
-    return ret;
+    return true;
   }
 
+  choose(options:number){
+    return Math.floor(Math.random()*options);
+  }
+
+  train(targetClass : Uint8Array[] ,otherClasses: any,epochs : number ){
+    for (let e=0; e !=epochs; e++){
+      if (Math.random() >= 0.5)
+        this.typeIFeedback(targetClass[this.choose(targetClass.length)]);
+      else 
+        this.typeIIFeedback(otherClasses[0][this.choose(otherClasses[0].length)]);
+      console.log("Epoch",e);
+    }
+  }
 
   debugPrintConditionMask(mask: Uint8Array){
     console.log("Memory",this.memory);
@@ -142,4 +169,5 @@ class TSetlin{
     process.stdout.write("\n");
   }
 }
-export {TSetlin};
+export { TSetlin };
+
